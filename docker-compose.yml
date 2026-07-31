@@ -18,30 +18,12 @@ services:
       - FIREWALL_OUTBOUND_SUBNETS=100.64.0.0/10,192.168.0.0/24
       - HEALTH_VPN_DURATION_INITIAL=120s
 
-  tailscale:
-    image: tailscale/tailscale:latest
-    container_name: tailscale-exit
-    network_mode: service:gluetun
-    depends_on:
-      gluetun:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - /home/tom/container/files/gluetun-tailscale/tailscale:/var/lib/tailscale
-    environment:
-      - TS_HOSTNAME=purevpnts
-      - TS_AUTHKEY=${TS_AUTHKEY}         # put in .env, NOT in the compose file
-      - TS_USERSPACE=true
-      - TS_ACCEPT_DNS=false
-      - TS_STATE_DIR=/var/lib/tailscale
-      - TS_EXTRA_ARGS=--login-server=https://headscale.palamattam.cloud --advertise-exit-node
-
   gluetun-config-refresher:
-    image: ghcr.io/<your-github-username>/<your-repo-name>:latest
+    image: ghcr.io/tomjpalamattam/gluetun-wg
     container_name: gluetun-config-refresher
     restart: unless-stopped
     environment:
-      - PUREVPN_EMAIL=${PUREVPN_EMAIL}     # put in .env, NOT in the compose file
+      - PUREVPN_EMAIL=${PUREVPN_EMAIL}    
       - PUREVPN_PASSWORD=${PUREVPN_PASSWORD}
       - CITY_NAME=Frankfurt
       - PROTOCOL=WireGuard
