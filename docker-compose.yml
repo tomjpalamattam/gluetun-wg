@@ -1,0 +1,60 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun-exit
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    volumes:
+      - /home/tom/container/files/gluetun-tailscale/gluetun:/gluetun
+      - ./wireguard:/gluetun/wireguard
+    environment:
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - WIREGUARD_CONFIG_FILE=/gluetun/wireguard/wg0.conf
+      - TZ=Europe/Berlin
+      - FIREWALL_OUTBOUND_SUBNETS=100.64.0.0/10,192.168.0.0/24
+      - HEALTH_VPN_DURATION_INITIAL=120s
+
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale-exit
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - /home/tom/container/files/gluetun-tailscale/tailscale:/var/lib/tailscale
+    environment:
+      - TS_HOSTNAME=purevpnts
+      - TS_AUTHKEY=${TS_AUTHKEY}         # put in .env, NOT in the compose file
+      - TS_USERSPACE=true
+      - TS_ACCEPT_DNS=false
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_EXTRA_ARGS=--login-server=https://headscale.palamattam.cloud --advertise-exit-node
+
+  gluetun-config-refresher:
+    image: ghcr.io/<your-github-username>/<your-repo-name>:latest
+    container_name: gluetun-config-refresher
+    restart: unless-stopped
+    environment:
+      - PUREVPN_EMAIL=${PUREVPN_EMAIL}     # put in .env, NOT in the compose file
+      - PUREVPN_PASSWORD=${PUREVPN_PASSWORD}
+      - CITY_NAME=Frankfurt
+      - PROTOCOL=WireGuard
+      - DEVICE=linux
+      - OUTPUT_PATH=/output/wg0.conf
+      - TARGET_CONTAINER=gluetun-exit
+      - CHECK_INTERVAL=30
+      - UNHEALTHY_THRESHOLD=3
+      - COOLDOWN_AFTER_FIX=180
+    volumes:
+      - ./wireguard:/output
+      # Grants docker-control (effectively root-on-host) to this container.
+      # Only do this if you trust everything running in this image.
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gluetun

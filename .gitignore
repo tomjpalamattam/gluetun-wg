@@ -1,0 +1,5 @@
+.env
+wireguard/*.conf
+__pycache__/
+*.pyc
+.DS_Store

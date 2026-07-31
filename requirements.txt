@@ -1,0 +1,2 @@
+playwright==1.47.0
+docker==7.1.0
