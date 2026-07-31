@@ -3,6 +3,7 @@ FROM python:3.12-slim-bookworm
 # System deps for Playwright + Xvfb + Chromium
 RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
+    xauth \
     curl \
     ca-certificates \
     fonts-liberation \
