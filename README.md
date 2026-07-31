@@ -62,11 +62,3 @@ which starts a virtual X display and sets `DISPLAY` for the shell; both
 `watchdog.py` and the `download_config.py` subprocess it spawns inherit that,
 so Chromium launched with `headless=False` renders to the virtual screen
 instead of a real one.
-
-## Security notes
-
-- Mounting `docker.sock` into this container gives it effective root on the
-  host. Only run trusted code in this image.
-- Keep all credentials in `.env`, never in `docker-compose.yml` or the repo.
-- If a Tailscale authkey or VPN password is ever pasted somewhere public
-  (chat, issue, commit), rotate it immediately — treat it as burned.

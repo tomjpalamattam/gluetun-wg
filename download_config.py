@@ -1,7 +1,53 @@
 import asyncio
 import os
+import re
+import socket
 import sys
 from playwright.async_api import async_playwright
+
+
+def resolve_endpoint_to_ip(config_path: str):
+    """
+    Rewrites the Endpoint=<host>:<port> line in a WireGuard config to use
+    the resolved IP address instead of the hostname. Leaves the file
+    untouched (aside from a log message) if resolution fails or no
+    Endpoint line is found.
+    """
+    with open(config_path, "r") as f:
+        content = f.read()
+
+    match = re.search(r'^Endpoint\s*=\s*([^\s:]+):(\d+)', content, re.MULTILINE)
+    if not match:
+        print("No Endpoint line found in config, skipping DNS resolution.", flush=True)
+        return
+
+    hostname, port = match.group(1), match.group(2)
+
+    # Already an IP - nothing to do
+    try:
+        socket.inet_aton(hostname)
+        print(f"Endpoint '{hostname}' is already an IP, skipping resolution.", flush=True)
+        return
+    except OSError:
+        pass
+
+    try:
+        ip = socket.gethostbyname(hostname)
+    except socket.gaierror as e:
+        print(f"Could not resolve '{hostname}': {e}. Leaving Endpoint as hostname.", flush=True)
+        return
+
+    print(f"Resolved Endpoint {hostname}:{port} -> {ip}:{port}", flush=True)
+
+    new_content = re.sub(
+        r'^(Endpoint\s*=\s*)[^\s:]+(:\d+)',
+        rf'\g<1>{ip}\g<2>',
+        content,
+        flags=re.MULTILINE,
+    )
+
+    with open(config_path, "w") as f:
+        f.write(new_content)
 
 
 async def download_purevpn_wg(
@@ -89,6 +135,9 @@ async def download_purevpn_wg(
         print(f"Suggested filename: {download.suggested_filename}", flush=True)
 
         await browser.close()
+
+        resolve_endpoint_to_ip(output_path)
+
         return output_path
 
 
